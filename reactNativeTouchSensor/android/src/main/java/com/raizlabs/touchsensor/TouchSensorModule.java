@@ -1,8 +1,11 @@
 package com.raizlabs.touchsensor;
 
 import android.Manifest;
+import android.app.FragmentManager;
+import android.app.Activity;
 import android.content.pm.PackageManager;
 
+import android.hardware.fingerprint.FingerprintManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
 import android.support.v4.os.CancellationSignal;
@@ -18,6 +21,8 @@ import com.facebook.react.bridge.Promise;
 
 
 public class TouchSensorModule extends ReactContextBaseJavaModule {
+
+    private static final String DIALOG_FRAGMENT_TAG = "fingerprintAuthenticationFragment";
 
     FingerprintManagerCompat fingerprint;
     ReactApplicationContext context;
@@ -74,7 +79,14 @@ public class TouchSensorModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void authenticate(String message, Promise promise) {
-        fingerprint.authenticate(null, 0, cancel, new AuthCallback(promise), null);
+        FingerprintAuthenticationDialogFragment fragment
+                = new FingerprintAuthenticationDialogFragment();
+        fragment.setStage(
+                    FingerprintAuthenticationDialogFragment.Stage.FINGERPRINT);
+        Activity activity = this.context.getCurrentActivity();
+        FragmentManager manager = activity.getFragmentManager();
+        fragment.show(manager, DIALOG_FRAGMENT_TAG);
+//        fingerprint.authenticate(null, 0, cancel, new AuthCallback(promise), null);
     }
 
     public class AuthCallback extends FingerprintManagerCompat.AuthenticationCallback {

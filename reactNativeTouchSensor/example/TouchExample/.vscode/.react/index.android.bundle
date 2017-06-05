@@ -18902,10 +18902,12 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
             }, {
                 key: "selectFromDOMNode",
                 value: function value(node, quiet) {
-                    var id = this.getIDForNode(node);
+                    var offsetFromLeaf = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 0,
+                        id = this.getIDForNode(node);
                     id && this.emit("setSelection", {
                         id: id,
-                        quiet: quiet
+                        quiet: quiet,
+                        offsetFromLeaf: offsetFromLeaf
                     });
                 }
             }, {
@@ -18955,7 +18957,7 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
                         path = _ref4.path,
                         value = _ref4.value,
                         data = this.elementData.get(id);
-                    data && data.updater && data.updater.setInContext ? data.updater.setInContext(path, value) : console.warn("trying to set state on a component that doesn't support it");
+                    data && data.updater && data.updater.setInContext ? data.updater.setInContext(path, value) : console.warn("trying to set context on a component that doesn't support it");
                 }
             }, {
                 key: "_makeGlobal",
@@ -19204,6 +19206,9 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
         function _classCallCheck(instance, Constructor) {
             if (!(instance instanceof Constructor)) throw new TypeError("Cannot call a class as a function");
         }
+        function getWindowFunction(name, polyfill) {
+            return String(window[name]).indexOf("[native code]") === -1 ? polyfill : window[name];
+        }
         var _extends = Object.assign || function (target) {
             for (var i = 1; i < arguments.length; i++) {
                 var source = arguments[i];
@@ -19230,8 +19235,8 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
             getIn = __webpack_require__(5),
             performanceNow = __webpack_require__(28),
             lastRunTimeMS = 5,
-            cancelIdleCallback = window.cancelIdleCallback || clearTimeout,
-            requestIdleCallback = window.requestIdleCallback || function (cb, options) {
+            cancelIdleCallback = getWindowFunction("cancelIdleCallback", clearTimeout),
+            requestIdleCallback = getWindowFunction("requestIdleCallback", function (cb, options) {
             var delayMS = 3e3 * lastRunTimeMS;
             return delayMS > 500 && (delayMS = 500), setTimeout(function () {
                 var startTime = performanceNow();
@@ -19244,7 +19249,7 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
                 var endTime = performanceNow();
                 lastRunTimeMS = (endTime - startTime) / 1e3;
             }, delayMS);
-        },
+        }),
             Bridge = function () {
             function Bridge(wall) {
                 _classCallCheck(this, Bridge), this._cbs = new Map(), this._inspectables = new Map(), this._cid = 0, this._listeners = {}, this._buffer = [], this._flushHandle = null, this._callers = {}, this._paused = !1, this._wall = wall, wall.listen(this._handleMessage.bind(this));
@@ -20271,7 +20276,11 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
                     setInContext: inst.forceUpdate && setInContext.bind(null, inst)
                 }, "function" == typeof type && (publicInstance = inst), inst._renderedChildren && (children = childrenList(inst._renderedChildren));
             }
-            return {
+            return "function" == typeof internalInstance.setNativeProps && (updater = {
+                setNativeProps: function setNativeProps(nativeProps) {
+                    internalInstance.setNativeProps(nativeProps);
+                }
+            }), {
                 nodeType: nodeType,
                 type: type,
                 key: key,
@@ -20613,7 +20622,11 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
                     break;
 
                 case HostComponent:
-                    nodeType = "Native", name = fiber.type, publicInstance = fiber.stateNode, props = fiber.memoizedProps, children = "string" == typeof props.children || "number" == typeof props.children ? props.children.toString() : [];
+                    nodeType = "Native", name = fiber.type, name = name.replace("topsecret-", ""), publicInstance = fiber.stateNode, props = fiber.memoizedProps, children = "string" == typeof props.children || "number" == typeof props.children ? props.children.toString() : [], "function" == typeof fiber.stateNode.setNativeProps && (updater = {
+                        setNativeProps: function setNativeProps(nativeProps) {
+                            fiber.stateNode.setNativeProps(nativeProps);
+                        }
+                    });
                     break;
 
                 case HostText:
@@ -20646,7 +20659,8 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
             };
         }
         function setInProps(fiber, path, value) {
-            fiber.pendingProps = copyWithSet(fiber.memoizedProps, path, value), fiber.stateNode.forceUpdate();
+            var inst = fiber.stateNode;
+            fiber.pendingProps = copyWithSet(inst.props, path, value), fiber.alternate && (fiber.alternate.pendingProps = fiber.pendingProps), fiber.stateNode.forceUpdate();
         }
         function setInState(inst, path, value) {
             setIn(inst.state, path, value), inst.forceUpdate();
@@ -20702,9 +20716,13 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
         function measureStyle(agent, bridge, resolveRNStyle, id) {
             var node = agent.elementData.get(id);
             if (!node || !node.props) return void bridge.send("rn-style:measure", {});
-            var style = resolveRNStyle(node.props.style),
-                instance = node.publicInstance;
+            var style = resolveRNStyle(node.props.style);
+            styleOverridesByHostComponentId[id] && (style = babelHelpers.extends({}, style, styleOverridesByHostComponentId[id]));
+            var instance = node.publicInstance;
             return instance && instance.measure ? void instance.measure(function (x, y, width, height, left, top) {
+                if ("number" != typeof x) return void bridge.send("rn-style:measure", {
+                    style: style
+                });
                 var margin = style && resolveBoxStyle("margin", style) || blank,
                     padding = style && resolveBoxStyle("padding", style) || blank;
                 bridge.send("rn-style:measure", {
@@ -20731,36 +20749,48 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
             }return nobj;
         }
         function renameStyle(agent, id, oldName, newName, val) {
-            var data = agent.elementData.get(id),
-                newStyle = _defineProperty({}, newName, val);
-            if (!data || !data.updater || !data.updater.setInProps) {
-                var el = agent.internalInstancesById.get(id);
-                return void (el && el.setNativeProps ? el.setNativeProps({
+            var _ref3,
+                data = agent.elementData.get(id),
+                newStyle = newName ? (_ref3 = {}, _defineProperty(_ref3, oldName, void 0), _defineProperty(_ref3, newName, val), _ref3) : _defineProperty({}, oldName, void 0);
+            if (data && data.updater && data.updater.setInProps) {
+                var customStyle,
+                    style = data && data.props && data.props.style;
+                if (Array.isArray(style)) {
+                    var lastLength = style.length - 1;
+                    "object" !== _typeof(style[lastLength]) || Array.isArray(style[lastLength]) ? (style = style.concat([newStyle]), data.updater.setInProps(["style"], style)) : (customStyle = shallowClone(style[lastLength]), delete customStyle[oldName], newName ? customStyle[newName] = val : customStyle[oldName] = void 0, data.updater.setInProps(["style", lastLength], customStyle));
+                } else "object" === ("undefined" == typeof style ? "undefined" : _typeof(style)) ? (customStyle = shallowClone(style), delete customStyle[oldName], newName ? customStyle[newName] = val : customStyle[oldName] = void 0, data.updater.setInProps(["style"], customStyle)) : (style = [style, newStyle], data.updater.setInProps(["style"], style));
+            } else {
+                if (!(data && data.updater && data.updater.setNativeProps)) return;
+                styleOverridesByHostComponentId[id] ? babelHelpers.extends(styleOverridesByHostComponentId[id], newStyle) : styleOverridesByHostComponentId[id] = newStyle, data.updater.setNativeProps({
                     style: newStyle
-                }) : console.error("Unable to set style for this element... (no forceUpdate or setNativeProps)"));
+                });
             }
-            var customStyle,
-                style = data && data.props && data.props.style;
-            Array.isArray(style) ? "object" !== _typeof(style[style.length - 1]) || Array.isArray(style[style.length - 1]) ? (style = style.concat([newStyle]), data.updater.setInProps(["style"], style)) : (customStyle = shallowClone(style[style.length - 1]), delete customStyle[oldName], customStyle[newName] = val, data.updater.setInProps(["style", style.length - 1], customStyle)) : "object" === ("undefined" == typeof style ? "undefined" : _typeof(style)) ? (customStyle = shallowClone(style), delete customStyle[oldName], customStyle[newName] = val, data.updater.setInProps(["style"], customStyle)) : (style = [style, newStyle], data.updater.setInProps(["style"], style)), agent.emit("hideHighlight");
+            agent.emit("hideHighlight");
         }
         function setStyle(agent, id, attr, val) {
             var data = agent.elementData.get(id),
                 newStyle = _defineProperty({}, attr, val);
-            if (!data || !data.updater || !data.updater.setInProps) {
-                var el = agent.internalInstancesById.get(id);
-                return void (el && el.setNativeProps ? el.setNativeProps({
+            if (data && data.updater && data.updater.setInProps) {
+                var style = data.props && data.props.style;
+                if (Array.isArray(style)) {
+                    var lastLength = style.length - 1;
+                    "object" !== _typeof(style[lastLength]) || Array.isArray(style[lastLength]) ? (style = style.concat([newStyle]), data.updater.setInProps(["style"], style)) : data.updater.setInProps(["style", lastLength, attr], val);
+                } else style = [style, newStyle], data.updater.setInProps(["style"], style);
+            } else {
+                if (!(data && data.updater && data.updater.setNativeProps)) return;
+                styleOverridesByHostComponentId[id] ? babelHelpers.extends(styleOverridesByHostComponentId[id], newStyle) : styleOverridesByHostComponentId[id] = newStyle, data.updater.setNativeProps({
                     style: newStyle
-                }) : console.error("Unable to set style for this element... (no forceUpdate or setNativeProps)"));
+                });
             }
-            var style = data.props && data.props.style;
-            Array.isArray(style) ? "object" !== _typeof(style[style.length - 1]) || Array.isArray(style[style.length - 1]) ? (style = style.concat([newStyle]), data.updater.setInProps(["style"], style)) : data.updater.setInProps(["style", style.length - 1, attr], val) : (style = [style, newStyle], data.updater.setInProps(["style"], style)), agent.emit("hideHighlight");
+            agent.emit("hideHighlight");
         }
         var _typeof = "function" == typeof Symbol && "symbol" == typeof (typeof Symbol === "function" ? Symbol.iterator : "@@iterator") ? function (obj) {
             return typeof obj;
         } : function (obj) {
             return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== (typeof Symbol === "function" ? Symbol.prototype : "@@prototype") ? "symbol" : typeof obj;
         },
-            resolveBoxStyle = __webpack_require__(44);
+            resolveBoxStyle = __webpack_require__(44),
+            styleOverridesByHostComponentId = {};
         module.exports = function (bridge, agent, resolveRNStyle) {
             bridge.onCall("rn-style:get", function (id) {
                 var node = agent.elementData.get(id);
@@ -21145,7 +21175,8 @@ __d(/* react-devtools-core/build/backend.js */function(global, require, module, 
             monospace: {
                 family: "Menlo, Consolas, monospace",
                 sizes: {
-                    normal: 11
+                    normal: 11,
+                    large: 14
                 }
             },
             sansSerif: {
@@ -47780,7 +47811,11 @@ var NativeModule = _reactNative.NativeModules.TouchSensor;
 
 exports.default = {
     isSupported: function isSupported() {
-        return NativeModule.isSupported();
+        return NativeModule.hasPermission().then(function () {
+            return NativeModule.hardwareSupported();
+        }).then(function () {
+            return NativeModule.hasFingerprints();
+        });
     },
     authenticate: function authenticate(reason) {
         reason = reason || ' ';
