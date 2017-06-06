@@ -24,7 +24,7 @@ export default class TouchExample extends Component {
             .catch( (error) => alert(`unsupported: ${error}`))
     }
     _hasPermission() {
-        Touch.hasPermission()
+        Touch.hasPermissions()
             .then( () => alert('Permissions accepted'))
             .catch( (error) => alert(`unsupported: ${error}`))
     }

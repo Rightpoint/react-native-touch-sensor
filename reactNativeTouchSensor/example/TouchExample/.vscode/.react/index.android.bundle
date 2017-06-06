@@ -1276,7 +1276,7 @@ var TouchExample = function (_Component) {
     }, {
         key: '_hasPermission',
         value: function _hasPermission() {
-            _reactNativeTouchSensor2.default.hasPermission().then(function () {
+            _reactNativeTouchSensor2.default.hasPermissions().then(function () {
                 return alert('Permissions accepted');
             }).catch(function (error) {
                 return alert('unsupported: ' + error);

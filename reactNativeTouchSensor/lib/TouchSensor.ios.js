@@ -24,4 +24,18 @@ export default {
         return NativeModule.authenticate(reason)
     },
 
+    /**
+     * Android only methods.
+     */
+    hasPermissions() {
+         return Promise.reject(new Error('This is an Android only method, use isSupported to determine support'))
+     },
+
+     hardwareSupported() {
+         return Promise.reject(new Error('This is an Android only method, use isSupported to determine support'))
+     },
+
+     hasFingerprints() {
+         return Promise.reject(new Error('This is an Android only method, use isSupported to determine support'))
+     }
 }

@@ -123,6 +123,6 @@ public class TouchSensorModule extends ReactContextBaseJavaModule
     }
 
     public void authenticateCancelled() {
-
+        this.authPromise = null;
     }
 }
