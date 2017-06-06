@@ -12,7 +12,7 @@ export default {
      * Checks to see if the current setup is supported on the device given current settings.
      */
     isSupported() {
-        return NativeModule.hasPermission()
+        return NativeModule.hasPermissions()
             .then( () => NativeModule.hardwareSupported() )
             .then( () => NativeModule.hasFingerprints() )
     },
@@ -32,7 +32,7 @@ export default {
      * Android Methods
      */
         
-     hasPermission() {
+     hasPermissions() {
          return NativeModule.hasPermissions()
      },
 

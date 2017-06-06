@@ -47811,7 +47811,7 @@ var NativeModule = _reactNative.NativeModules.TouchSensor;
 
 exports.default = {
     isSupported: function isSupported() {
-        return NativeModule.hasPermission().then(function () {
+        return NativeModule.hasPermissions().then(function () {
             return NativeModule.hardwareSupported();
         }).then(function () {
             return NativeModule.hasFingerprints();
@@ -47821,7 +47821,7 @@ exports.default = {
         reason = reason || ' ';
         return NativeModule.authenticate(reason);
     },
-    hasPermission: function hasPermission() {
+    hasPermissions: function hasPermissions() {
         return NativeModule.hasPermissions();
     },
     hardwareSupported: function hardwareSupported() {

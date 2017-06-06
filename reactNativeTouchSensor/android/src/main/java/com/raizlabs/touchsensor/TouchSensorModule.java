@@ -5,28 +5,23 @@ import android.app.FragmentManager;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 
-import android.hardware.fingerprint.FingerprintManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
-import android.support.v4.os.CancellationSignal;
 
-import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 
 
-
-
-public class TouchSensorModule extends ReactContextBaseJavaModule {
+public class TouchSensorModule extends ReactContextBaseJavaModule
+    implements FingerprintAuthenticationDialogFragment.FingerprintCallback {
 
     private static final String DIALOG_FRAGMENT_TAG = "fingerprintAuthenticationFragment";
 
     FingerprintManagerCompat fingerprint;
     ReactApplicationContext context;
-    CancellationSignal cancel;
+    Promise authPromise;
 
     public TouchSensorModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -42,9 +37,29 @@ public class TouchSensorModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void isSupported(Promise promise) {
-        Boolean hasPermissions = ActivityCompat.checkSelfPermission(context, Manifest.permission.USE_FINGERPRINT) == PackageManager.PERMISSION_GRANTED;
-        Boolean hasFingerprints = fingerprint.hasEnrolledFingerprints();
-        Boolean hardwareSupported = fingerprint.isHardwareDetected();
+        String errorMessage = null;
+        String errorTitle = null;
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.USE_FINGERPRINT) == PackageManager.PERMISSION_GRANTED) {
+            errorMessage = this.context.getString(R.string.permission_error_message);
+            errorTitle = this.context.getString(R.string.permission_error_title);
+            promise.reject(errorTitle, errorMessage);
+            return;
+        }
+
+        if (fingerprint.isHardwareDetected()) {
+            errorTitle = this.context.getString(R.string.hardware_error_title);
+            errorMessage = this.context.getString(R.string.hardware_error_message);
+            promise.reject(errorTitle, errorMessage);
+            return;
+        }
+
+        if (fingerprint.hasEnrolledFingerprints()) {
+            errorTitle = this.context.getString(R.string.fingerprint_error_title);
+            errorMessage = this.context.getString(R.string.fingerprint_error_message);
+            promise.reject(errorTitle, errorMessage);
+            return;
+        }
+        promise.resolve(null);
     }
 
     @ReactMethod
@@ -53,7 +68,9 @@ public class TouchSensorModule extends ReactContextBaseJavaModule {
             promise.resolve(null);
         }
         else {
-            promise.reject("Error", "No Permissions");
+            String errorMessage = this.context.getString(R.string.permission_error_message);
+            String errorTitle = this.context.getString(R.string.permission_error_title);
+            promise.reject(errorTitle, errorMessage);
         }
     }
 
@@ -63,7 +80,10 @@ public class TouchSensorModule extends ReactContextBaseJavaModule {
             promise.resolve(null);
         }
         else {
-            promise.reject("Error", "Hardware not supported");
+            String errorTitle = this.context.getString(R.string.hardware_error_title);
+            String errorMessage = this.context.getString(R.string.hardware_error_message);
+            promise.reject(errorTitle, errorMessage);
+
         }
     }
 
@@ -73,7 +93,9 @@ public class TouchSensorModule extends ReactContextBaseJavaModule {
             promise.resolve(null);
         }
         else {
-            promise.reject("Error", "No Fingerprints");
+            String errorTitle = this.context.getString(R.string.fingerprint_error_title);
+            String errorMessage = this.context.getString(R.string.fingerprint_error_message);
+            promise.reject(errorTitle, errorMessage);
         }
     }
 
@@ -81,63 +103,26 @@ public class TouchSensorModule extends ReactContextBaseJavaModule {
     public void authenticate(String message, Promise promise) {
         FingerprintAuthenticationDialogFragment fragment
                 = new FingerprintAuthenticationDialogFragment();
+        fragment.callback = this;
         fragment.setStage(
                     FingerprintAuthenticationDialogFragment.Stage.FINGERPRINT);
         Activity activity = this.context.getCurrentActivity();
         FragmentManager manager = activity.getFragmentManager();
         fragment.show(manager, DIALOG_FRAGMENT_TAG);
-//        fingerprint.authenticate(null, 0, cancel, new AuthCallback(promise), null);
+        this.authPromise = promise;
     }
 
-    public class AuthCallback extends FingerprintManagerCompat.AuthenticationCallback {
-        Promise promise;
+    public void authenticateSuccess() {
+        this.authPromise.resolve(null);
+    }
 
-        public AuthCallback(Promise promise) {
-            this.promise = promise;
-        }
+    public void authenticateFailed() {
+        this.authPromise.reject(
+                this.context.getString(R.string.generic_error_title),
+                this.context.getString(R.string.fingerprint_not_recognized));
+    }
 
-        /**
-         * Called when an unrecoverable error has been encountered and the operation is complete.
-         * No further callbacks will be made on this object.
-         * @param errMsgId An integer identifying the error message
-         * @param errString A human-readable error string that can be shown in UI
-         */
-        @Override
-        public void onAuthenticationError(int errMsgId, CharSequence errString) {
-            super.onAuthenticationError(errMsgId, errString);
-            promise.reject(Integer.toString(errMsgId), errString.toString());
-            promise = null;
-        }
+    public void authenticateCancelled() {
 
-        /**
-         * Called when a recoverable error has been encountered during authentication. The help
-         * string is provided to give the user guidance for what went wrong, such as
-         * "Sensor dirty, please clean it."
-         * @param helpMsgId An integer identifying the error message
-         * @param helpString A human-readable string that can be shown in UI
-         */
-        @Override
-        public void onAuthenticationHelp(int helpMsgId, CharSequence helpString) {
-            super.onAuthenticationHelp(helpMsgId, helpString);
-        }
-
-        /**
-         * Called when a fingerprint is recognized.
-         * @param result An object containing authentication-related data
-         */
-        public void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result) {
-            super.onAuthenticationSucceeded(result);
-            promise.resolve(null);
-            promise = null;
-        }
-
-        /**
-         * Called when a fingerprint is valid but not recognized.
-         */
-        public void onAuthenticationFailed() {
-            super.onAuthenticationFailed();
-            promise.reject("Error", "Bad Fingerprint");
-            promise = null;
-        }
     }
 }
