@@ -10,7 +10,10 @@ Bridging for accesing the Touch Sensor on both iOS and Android using TouchID and
 # Android Setup
 
 Be sure to add the Fingerprint permission to your `AndroidManaifest.xml` file
+
 `<uses-permission android:name="android.permission.USE_FINGERPRINT" />`
+
+Currently `react-native-touch-sensor` requires Android sdk 23 to work.  Update this in your `app.gradle` file
 
 # Example
 ```
