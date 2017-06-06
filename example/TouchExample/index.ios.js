@@ -20,7 +20,7 @@ export default class TouchExample extends Component {
     _supportedPressed() {
         Touch.isSupported()
             .then( () => alert('supported'))
-            .catch( (error) => alert(`Unsupported: ${error}`))
+            .catch( (error) => alert(`unsupported: ${error}`))
     }
     
     _authenticatePressed() {

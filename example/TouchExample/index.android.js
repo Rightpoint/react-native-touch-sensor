@@ -4,14 +4,14 @@
  * @flow
  */
 
-import React, { Component } from 'react'
+import React, { Component } from 'react';
 import {
   AppRegistry,
   StyleSheet,
   View,
   Text,
   Button
-} from 'react-native'
+} from 'react-native';
 
 import Touch from 'react-native-touch-sensor'
 
