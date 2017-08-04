@@ -1,6 +1,6 @@
 # react-native-touch-sensor
 
-Bridging for accesing the Touch Sensor on both iOS and Android using TouchID and Android Fingerprint
+Bridging for accessing the Touch Sensor on both iOS and Android using TouchID and Android Fingerprint
 
 # Installation
 
@@ -9,11 +9,11 @@ Bridging for accesing the Touch Sensor on both iOS and Android using TouchID and
 
 # Android Setup
 
-Be sure to add the Fingerprint permission to your `AndroidManaifest.xml` file
+Be sure to add the Fingerprint permission to your `AndroidManifest.xml` file
 
 `<uses-permission android:name="android.permission.USE_FINGERPRINT" />`
 
-Currently `react-native-touch-sensor` requires Android sdk 23 to work.  Update this in your `app.gradle` file
+Currently `react-native-touch-sensor` requires Android SDK 23+ to work.  Update this in your `app.gradle` file
 
 # Example
 ```
@@ -23,7 +23,7 @@ import { View, Text, Button } from 'react-native'
 import Touch from 'react-native-touch-sensor'
 
 export default class TouchExample extends Component {
-  
+
 
     _isSupported() {
         Touch.isSupported()
@@ -40,12 +40,12 @@ export default class TouchExample extends Component {
         return (
             <View>
                 <Text>Check to see if all conditions are met to use Fingerprint</Text>
-                <Button 
+                <Button
                     title="IsSupported()"
                     onPress={() => this._isSupported()}
                     />
                 <Text>Begins Authentication process</Text>
-                <Button 
+                <Button
                     title="Authenticate()"
                     onPress={() => this._authenticatePressed()}
                     />
@@ -61,4 +61,3 @@ export default class TouchExample extends Component {
     AndroidFingerprint: https://github.com/googlesamples/android-FingerprintDialog
                         https://github.com/jariz/react-native-fingerprint-android
                         https://material.io/guidelines/patterns/fingerprint.html#fingerprint-enrollment
-    
