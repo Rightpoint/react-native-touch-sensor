@@ -12,7 +12,7 @@ import java.util.Collections;
 
 public class TouchSensorPackage implements ReactPackage {
 
-    @Override
+    // @Override - Deprecated RN 0.47
     public List<Class<? extends JavaScriptModule>> createJSModules() {
         return Collections.emptyList();
     }
